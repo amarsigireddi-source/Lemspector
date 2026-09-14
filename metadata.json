@@ -1,0 +1,6 @@
+{
+  "name": "Lemlist Sequence Analyst",
+  "description": "Context-aware Lemlist sequence and campaign performance analyzer with audience & angle interpretation powered by Gemini AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
