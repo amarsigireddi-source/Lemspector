@@ -9,17 +9,11 @@ const STORAGE_KEYS = {
   CUSTOM_CAMPAIGNS: 'lemlist_analyst_custom_campaigns',
 };
 
-export const DEFAULT_LINKED_LEMLIST_KEY = '30b4e4d19beecbeb5fae08ad081e310c';
-
 // Storage Helpers
 export function getStoredApiKey(): string {
-  if (typeof window === 'undefined') return DEFAULT_LINKED_LEMLIST_KEY;
-  const stored = localStorage.getItem(STORAGE_KEYS.LEMLIST_API_KEY);
-  if (stored !== null && stored !== '') {
-    return stored;
-  }
-  // Initialize with the provided key
-  return DEFAULT_LINKED_LEMLIST_KEY;
+  if (typeof window === 'undefined') return '';
+  // No key stored means the app runs in demo mode with sample data.
+  return localStorage.getItem(STORAGE_KEYS.LEMLIST_API_KEY) || '';
 }
 
 export function setStoredApiKey(key: string): void {

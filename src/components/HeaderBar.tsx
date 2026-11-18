@@ -143,6 +143,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         </button>
 
         {/* Refresh from Lemlist */}
+        {hasApiKey && (
         <button
           onClick={onRefreshData}
           disabled={isLoading}
@@ -150,8 +151,9 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           title="Refresh cached sequences and stats from Lemlist"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#6366f1]' : 'text-[#64748b]'}`} />
-          <span>{isLoading ? 'Syncing...' : 'Refresh API'}</span>
+          <span>{isLoading ? 'Syncing...' : 'Refresh'}</span>
         </button>
+        )}
 
         {/* Mode / API Settings Button */}
         <button
@@ -159,12 +161,12 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors border cursor-pointer ${
             hasApiKey
               ? 'bg-[#f8fafc] border-[#cbd5e1] text-[#334155] hover:bg-[#f1f5f9]'
-              : 'bg-[#fef3c7] border-[#fde68a] text-[#b45309]'
+              : 'bg-[#6366f1] border-[#6366f1] text-white hover:bg-[#4f46e5]'
           }`}
-          title="Configure Lemlist API Key & Environments"
+          title="Connect your Lemlist workspace"
         >
           <Key className="w-3.5 h-3.5" />
-          <span>{hasApiKey ? 'Live API' : 'Demo Sandbox'}</span>
+          <span>{hasApiKey ? 'Lemlist Connected' : 'Connect Lemlist'}</span>
         </button>
       </div>
     </header>

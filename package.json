@@ -1,7 +1,9 @@
 {
-  "name": "react-example",
+  "name": "lemspector",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "AI-powered Lemlist campaign and sequence analyzer \u2014 step-by-step funnel diagnostics, context-aware Gemini insights, and side-by-side campaign comparison.",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
