@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Key, X, Check, Database, AlertTriangle, ShieldCheck, RefreshCw, ExternalLink, HelpCircle } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -6,6 +6,8 @@ interface SettingsModalProps {
   apiKey: string;
   onClose: () => void;
   onSaveApiKey: (key: string) => void;
+  /** Campaign the visitor tried to open before connecting; loaded right after saving. */
+  pendingCampaignId?: string | null;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -13,15 +15,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   apiKey,
   onClose,
   onSaveApiKey,
+  pendingCampaignId,
 }) => {
   const [inputKey, setInputKey] = useState(apiKey);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      setInputKey(apiKey);
+      setTestResult(null);
+    }
+  }, [isOpen, apiKey]);
+
   if (!isOpen) return null;
 
-  const handleTestConnection = async () => {
-    if (!inputKey.trim()) return;
+  const handleTestConnection = async (): Promise<boolean> => {
+    if (!inputKey.trim()) return false;
     setIsTesting(true);
     setTestResult(null);
 
@@ -39,26 +49,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       if (res.ok && data.success) {
         setTestResult({
           success: true,
-          message: 'Connected to Lemlist API successfully via HTTP Basic Auth.',
+          message: 'Connected to your Lemlist workspace.',
         });
+        return true;
       } else {
         setTestResult({
           success: false,
           message: data.error || 'Failed to authenticate with Lemlist API.',
         });
+        return false;
       }
     } catch (err: any) {
       setTestResult({
         success: false,
         message: err.message || 'Connection error.',
       });
+      return false;
     } finally {
       setIsTesting(false);
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!inputKey.trim()) return;
+    // Verify the key before saving so visitors get instant feedback on typos.
+    const ok = await handleTestConnection();
+    if (!ok) return;
     onSaveApiKey(inputKey.trim());
     onClose();
   };
@@ -67,6 +84,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setInputKey('');
     onSaveApiKey('');
     setTestResult(null);
+    onClose();
   };
 
   return (
@@ -79,8 +97,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <Key className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[#0f172a]">Lemlist API Key & Settings</h2>
-              <p className="text-xs text-[#64748b]">Manage Lemlist REST API authentication and caching</p>
+              <h2 className="text-base font-bold text-[#0f172a]">Connect your Lemlist workspace</h2>
+              <p className="text-xs text-[#64748b]">Analyze your own campaigns with your Lemlist API key</p>
             </div>
           </div>
           <button
@@ -93,13 +111,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSave} className="p-6 space-y-5">
+          {pendingCampaignId && (
+            <div className="p-3.5 rounded border border-[#c7d2fe] bg-[#eef2ff] text-xs text-[#3730a3] leading-relaxed">
+              Lemlist only shares campaign data with its owner. Connect the API key of the workspace that owns{' '}
+              <code className="font-mono font-semibold">{pendingCampaignId}</code> and it will open automatically.
+            </div>
+          )}
+
           <div className="p-4 rounded bg-[#f8fafc] border border-[#e2e8f0] space-y-2 text-xs text-[#334155]">
             <div className="flex items-center gap-2 font-semibold text-[#0f172a]">
               <ShieldCheck className="w-4 h-4 text-[#16a34a]" />
-              <span>Authentication & Security Standard</span>
+              <span>Your key stays with you</span>
             </div>
             <p className="text-[#64748b] leading-relaxed">
-              Your Lemlist API Key is stored securely in your browser's local application state. All requests utilize standard HTTP Basic Auth (<code className="text-[#4f46e5] font-semibold">:apiKey</code>) routed through our rate-limit aware backend proxy against <code className="text-[#0f172a] font-semibold">api.lemlist.com/api</code>.
+              Your key is saved only in this browser. It's sent with each request to this app's server, which forwards it to <code className="text-[#0f172a] font-semibold">api.lemlist.com</code> and never stores it. Click <b>Disconnect</b> at any time to remove it.
             </p>
           </div>
 
@@ -109,13 +134,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </label>
             <input
               type="password"
-              placeholder="Paste your Lemlist API key (e.g. lem_...)"
+              placeholder="Paste your Lemlist API key"
+              autoFocus
               value={inputKey}
               onChange={e => setInputKey(e.target.value)}
               className="w-full px-3.5 py-2.5 bg-white border border-[#cbd5e1] rounded text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#6366f1] font-mono"
             />
             <p className="text-[11px] text-[#64748b] mt-1.5 flex items-center gap-1">
-              <span>Find this in Lemlist Settings ➔ Integrations ➔ API Key.</span>
+              <span>In Lemlist: Settings → Integrations → API → Generate.</span>
+              <a
+                href="https://app.lemlist.com/settings/integrations"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-0.5 text-[#4f46e5] font-semibold hover:underline"
+              >
+                Open Lemlist <ExternalLink className="w-3 h-3" />
+              </a>
             </p>
           </div>
 
@@ -150,13 +184,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <span>{isTesting ? 'Testing...' : 'Test Connection'}</span>
               </button>
 
-              {inputKey && (
+              {apiKey && (
                 <button
                   type="button"
                   onClick={handleClearKey}
                   className="px-3 py-2 text-[#e11d48] hover:bg-rose-50 rounded text-xs font-medium transition-colors"
                 >
-                  Switch to Demo Sandbox
+                  Disconnect & use demo data
                 </button>
               )}
             </div>
@@ -171,10 +205,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-[#6366f1] hover:bg-[#4f46e5] text-white font-semibold rounded text-xs shadow-xs transition-all flex items-center gap-1.5"
+                disabled={!inputKey.trim() || isTesting}
+                className="disabled:opacity-50 px-5 py-2 bg-[#6366f1] hover:bg-[#4f46e5] text-white font-semibold rounded text-xs shadow-xs transition-all flex items-center gap-1.5"
               >
                 <Check className="w-4 h-4" />
-                <span>Save Key</span>
+                <span>{isTesting ? 'Connecting...' : 'Connect'}</span>
               </button>
             </div>
           </div>

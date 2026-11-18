@@ -3,6 +3,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
+import { createHash } from 'crypto';
 import { AIDiagnosis } from './src/types';
 
 dotenv.config();
@@ -34,11 +35,11 @@ async function startServer() {
   });
 
   const getLemlistKey = (req?: Request): string => {
+    // Keys always come from the visitor (header or JSON body), never from the server
+    // environment or URL query strings, so every user only ever sees their own workspace.
     const headerKey = req?.headers?.['x-lemlist-api-key'] as string;
     const bodyKey = req?.body?.apiKey as string;
-    const queryKey = req?.query?.apiKey as string;
-    const envKey = process.env.LEMLIST_API_KEY;
-    return (headerKey || bodyKey || queryKey || envKey || '').trim();
+    return (headerKey || bodyKey || '').trim();
   };
 
   // Helper to convert HTML email body to readable text
@@ -64,9 +65,9 @@ async function startServer() {
 
   // Lemlist API Proxy Helper
   const makeLemlistRequest = async (endpoint: string, apiKey?: string, method = 'GET', body?: any) => {
-    const cleanKey = (apiKey || process.env.LEMLIST_API_KEY || '').trim();
+    const cleanKey = (apiKey || '').trim();
     if (!cleanKey) {
-      throw new Error('No Lemlist API key configured. Add one in Settings or set LEMLIST_API_KEY.');
+      throw new Error('Connect your Lemlist API key to load live campaigns.');
     }
     const basicAuth = Buffer.from(`:${cleanKey}`).toString('base64');
     
@@ -79,11 +80,16 @@ async function startServer() {
       'Content-Type': 'application/json',
     };
 
-    const response = await fetch(url, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    let response: globalThis.Response;
+    try {
+      response = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch {
+      throw new Error('Could not reach Lemlist right now. Please try again in a moment.');
+    }
 
     if (!response.ok) {
       // If 401, also try Bearer header fallback
@@ -101,12 +107,30 @@ async function startServer() {
           return await bearerResponse.json();
         }
       }
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('Lemlist rejected this API key. Double-check it in Lemlist → Settings → Integrations → API.');
+      }
+      if (response.status === 404) {
+        throw new Error('Not found in this Lemlist workspace. Make sure the campaign belongs to the account of this API key.');
+      }
+      if (response.status === 429) {
+        throw new Error('Lemlist rate limit reached. Please wait a few seconds and try again.');
+      }
       const errText = await response.text();
       throw new Error(`Lemlist API error (${response.status}): ${errText || response.statusText}`);
     }
 
     return await response.json();
   };
+
+  // Every Lemlist proxy route needs the visitor's own key
+  app.use('/api/lemlist', (req: Request, res: Response, next) => {
+    if (!getLemlistKey(req)) {
+      res.status(401).json({ success: false, code: 'NO_API_KEY', error: 'Connect your Lemlist API key to load live campaigns.' });
+      return;
+    }
+    next();
+  });
 
   // API Route: Test Lemlist API Key Connection
   app.post('/api/lemlist/test-connection', async (req: Request, res: Response) => {
@@ -134,12 +158,14 @@ async function startServer() {
       res.json(teamData);
     } catch (err: any) {
       console.error('Error fetching Lemlist team:', err.message);
-      res.status(500).json({ error: err.message });
+      res.status(/API key/.test(err.message) ? 401 : /Not found/.test(err.message) ? 404 : 500).json({ error: err.message });
     }
   });
 
   // Short-lived in-memory cache to prevent Lemlist rate-limiting (30s TTL)
-  let cachedCampaigns: { timestamp: number; data: any[] } | null = null;
+  // Keyed by a hash of the API key so each workspace gets its own cache entry.
+  const campaignCache = new Map<string, { timestamp: number; data: any[] }>();
+  const cacheKeyFor = (apiKey: string) => createHash('sha256').update(apiKey).digest('hex');
 
   // Helper: Fetch all campaigns across pages from Lemlist API (Uncapped pagination)
   async function fetchAllLemlistCampaigns(apiKey: string): Promise<any[]> {
@@ -176,6 +202,8 @@ async function startServer() {
   app.get('/api/lemlist/campaigns', async (req: Request, res: Response) => {
     const apiKey = getLemlistKey(req);
     const forceFresh = req.query.fresh === 'true';
+    const cacheId = cacheKeyFor(apiKey);
+    const cachedCampaigns = campaignCache.get(cacheId);
     const limitQuery = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
 
     if (!forceFresh && cachedCampaigns && (Date.now() - cachedCampaigns.timestamp < 30000)) {
@@ -368,10 +396,14 @@ async function startServer() {
         })
       );
 
-      cachedCampaigns = {
+      campaignCache.set(cacheId, {
         timestamp: Date.now(),
         data: enrichedCampaigns,
-      };
+      });
+      // Drop stale entries so memory doesn't grow with visitors
+      for (const [k, v] of campaignCache) {
+        if (Date.now() - v.timestamp > 5 * 60 * 1000) campaignCache.delete(k);
+      }
 
       if (limitQuery && limitQuery > 0) {
         res.json(enrichedCampaigns.slice(0, limitQuery));
@@ -380,7 +412,7 @@ async function startServer() {
       }
     } catch (err: any) {
       console.error('Error fetching Lemlist campaigns:', err.message);
-      res.status(500).json({ error: err.message });
+      res.status(/API key/.test(err.message) ? 401 : /Not found/.test(err.message) ? 404 : 500).json({ error: err.message });
     }
   });
 
@@ -515,7 +547,7 @@ async function startServer() {
       });
     } catch (err: any) {
       console.error(`Error fetching Lemlist campaign ${campaignId}:`, err.message);
-      res.status(500).json({ error: err.message });
+      res.status(/API key/.test(err.message) ? 401 : /Not found/.test(err.message) ? 404 : 500).json({ error: err.message });
     }
   });
 
@@ -934,7 +966,7 @@ ${campaignSummaries}
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Lemlist Sequence Analyst server running on http://0.0.0.0:${PORT}`);
+    console.log(`Lemspector running on http://0.0.0.0:${PORT}`);
   });
 }
 

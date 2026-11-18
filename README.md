@@ -63,21 +63,40 @@ npm run dev
 
 Open **http://localhost:3000**. The app starts in **demo mode** with sample campaigns.
 
-### Connect your Lemlist account
+### Use it with your own Lemlist data
 
-1. In Lemlist, go to **Settings → Integrations → API** and copy your API key.
-2. In Lemspector, click **Demo Sandbox** (top bar) and paste the key.
+Anyone can use Lemspector with their own workspace. Nothing is shared between visitors.
+
+1. In Lemlist, go to **Settings → Integrations → API** and generate an API key.
+2. In Lemspector, click **Connect Lemlist** and paste the key. It's checked before it's saved.
 3. Your team's campaigns, steps, and stats sync automatically.
 
-The key is stored only in your browser's `localStorage`. The backend uses it to proxy requests to `api.lemlist.com`. You can also set `LEMLIST_API_KEY` on the server instead.
+**Have a campaign link?** Paste any `https://app.lemlist.com/...cam_...` URL or a bare `cam_...` ID into the search bar. If you haven't connected yet, Lemspector asks for your key and then opens that campaign straight away.
+
+> 🔒 **Privacy:** your Lemlist key lives only in your browser's `localStorage`. It's sent with each request to the Lemspector server, which forwards it to `api.lemlist.com` and never stores or logs it. Cached campaign data is kept per workspace for 30 seconds to avoid Lemlist rate limits. Click **Disconnect** to remove the key.
 
 ## ⚙️ Configuration
 
 | Variable | Required | Description |
 |---|---|---|
-| `GEMINI_API_KEY` | For AI features | Google Gemini key. Get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
-| `LEMLIST_API_KEY` | No | Server-side Lemlist key, used when the browser doesn't send one |
+| `GEMINI_API_KEY` | Recommended | Google Gemini key for AI analysis. Without it, a rule-based diagnosis is used. Get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | `PORT` | No | Server port (default `3000`) |
+
+There's deliberately no Lemlist setting: every visitor brings their own key.
+
+## 🌍 Deploying a public instance
+
+Lemspector is a single Node server, so any Node host works (Render, Railway, Fly.io, Cloud Run, a VPS):
+
+```bash
+npm ci && npm run build
+GEMINI_API_KEY=your-key npm start
+```
+
+Things to know before you share the link:
+- **Lemlist data is per visitor.** Each person connects their own key, and one visitor can never see another's workspace.
+- **Gemini usage is billed to you.** Every visitor's AI analysis uses the `GEMINI_API_KEY` you set. Set a quota in Google AI Studio, or leave it unset to use only the free rule-based diagnostics.
+- **Serve over HTTPS** so API keys are encrypted in transit. Most hosts do this by default.
 
 ## 🏗️ How it works
 
@@ -93,6 +112,7 @@ The key is stored only in your browser's `localStorage`. The backend uses it to 
 | Endpoint | Purpose |
 |---|---|
 | `GET  /api/health` | Health check |
+| | *All `/api/lemlist/*` routes require the visitor's key in the `x-lemlist-api-key` header* |
 | `POST /api/lemlist/test-connection` | Validate a Lemlist API key |
 | `GET  /api/lemlist/team` | Team members |
 | `GET  /api/lemlist/campaigns` | Campaigns with enriched step stats |
