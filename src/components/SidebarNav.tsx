@@ -29,10 +29,12 @@ interface SidebarNavProps {
   onSelectMember: (memberId: string) => void;
   onSelectCampaign: (campaignId: string) => void;
   onSelectStep: (campaignId: string, stepId: string) => void;
+  isLiveMode?: boolean;
 }
 
 export const SidebarNav: React.FC<SidebarNavProps> = ({
   teamMembers,
+  isLiveMode = false,
   campaigns,
   contexts,
   selectedMemberId,
@@ -94,8 +96,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
           L
         </div>
         <div>
-          <h1 className="text-white font-semibold text-sm tracking-tight">Lemlist Analyst</h1>
-          <p className="text-[10px] text-[#64748b]">Data Grid & Sequence AI</p>
+          <h1 className="text-white font-semibold text-sm tracking-tight">Lemspector</h1>
+          <p className="text-[10px] text-[#64748b]">Lemlist Sequence Analyzer</p>
         </div>
       </div>
 
@@ -278,8 +280,10 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       <div className="p-3 border-t border-[#1e293b]">
         <div className="bg-[#1e293b] rounded p-2.5 flex items-center justify-between cursor-default">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse"></div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-300">Lemlist API Active</span>
+            <div className={`w-2 h-2 rounded-full ${isLiveMode ? 'bg-[#22c55e] animate-pulse' : 'bg-[#f59e0b]'}`}></div>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-300">
+              {isLiveMode ? 'Lemlist API Active' : 'Demo Mode'}
+            </span>
           </div>
           <span className="text-[9px] font-mono text-[#64748b]">v2 REST</span>
         </div>

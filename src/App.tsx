@@ -28,7 +28,6 @@ import {
   getStoredAIVerdicts,
   saveAIVerdict,
   enrichCampaignStepsWithRelativeStats,
-  DEFAULT_LINKED_LEMLIST_KEY,
 } from './utils';
 import { HeaderBar } from './components/HeaderBar';
 import { SidebarNav } from './components/SidebarNav';
@@ -136,36 +135,20 @@ export default function App() {
             const unsubscribed = calc.unsubscribed || c.stats?.unsubscribed || 0;
 
             const ownerId = c.createdBy || c.creator?.userId || c.userId || 'usr_default';
-            const ownerEmail = c.creator?.userEmail || c.userEmail || (c.name.includes('William') ? 'william.debong@nornorm.com' : undefined);
+            const ownerEmail = c.creator?.userEmail || c.userEmail;
             
             // Derive a friendly member name
             let ownerName = 'Team Lead';
             if (ownerEmail) {
               const prefix = ownerEmail.split('@')[0].replace('.', ' ');
               ownerName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
-            } else if (c.name.includes('William')) {
-              ownerName = 'William Debong';
-            } else if (c.name.includes('Hedda')) {
-              ownerName = 'Hedda';
-            } else if (c.name.includes('Herman')) {
-              ownerName = 'Herman';
-            } else if (c.name.includes('Sam')) {
-              ownerName = 'Sam';
-            } else if (c.name.includes('Alexander')) {
-              ownerName = 'Alexander';
-            } else if (c.name.includes('Finn')) {
-              ownerName = 'Finn';
-            } else if (c.name.includes('Tarryn')) {
-              ownerName = 'Tarryn';
-            } else if (c.name.includes('Enzo')) {
-              ownerName = 'Enzo';
             }
 
             if (!discoveredMembers[ownerId]) {
               const nameParts = ownerName.split(' ');
               discoveredMembers[ownerId] = {
                 id: ownerId,
-                email: ownerEmail || `${ownerName.toLowerCase().replace(/\s+/g, '.')}@nornorm.com`,
+                email: ownerEmail || '',
                 firstName: nameParts[0] || ownerName,
                 lastName: nameParts.slice(1).join(' ') || '',
                 role: 'Outbound Specialist',
@@ -347,7 +330,7 @@ export default function App() {
     // 2. Fetch directly from Lemlist via proxy /api/lemlist/campaigns/:id
     try {
       setIsLoading(true);
-      const keyToUse = apiKey || DEFAULT_LINKED_LEMLIST_KEY;
+      const keyToUse = apiKey;
       const res = await fetch(`/api/lemlist/campaigns/${encodeURIComponent(cleanId)}`, {
         headers: keyToUse ? { 'x-lemlist-api-key': keyToUse } : {},
       });
@@ -437,7 +420,7 @@ export default function App() {
           ...prev,
           {
             id: ownerId,
-            email: ownerEmail || `${ownerName.toLowerCase().replace(/\s+/g, '.')}@nornorm.com`,
+            email: ownerEmail || '',
             firstName: ownerName.split(' ')[0] || ownerName,
             lastName: ownerName.split(' ').slice(1).join(' ') || '',
             role: 'Outbound Specialist',
@@ -474,6 +457,7 @@ export default function App() {
     <div className="flex h-screen w-full overflow-hidden bg-[#f4f4f7] font-sans text-[#1a1c20] antialiased">
       {/* Left Sidebar Navigation Tree */}
       <SidebarNav
+        isLiveMode={Boolean(apiKey)}
         teamMembers={teamMembers}
         campaigns={campaigns}
         contexts={contexts}
