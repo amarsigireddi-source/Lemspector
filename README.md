@@ -13,6 +13,8 @@ See exactly where each sequence leaks leads, then get recommendations from Gemin
 ![Gemini](https://img.shields.io/badge/Google-Gemini-8E75B2?logo=googlegemini&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+**[▶ Try the live demo](https://lemspector19.vercel.app)**
+
 <img src="docs/screenshots/overview.png" alt="Lemspector campaign overview: conversion funnel and step performance" width="900" />
 
 </div>
@@ -86,7 +88,11 @@ There's deliberately no Lemlist setting: every visitor brings their own key.
 
 ## 🌍 Deploying a public instance
 
-Lemspector is a single Node server, so any Node host works (Render, Railway, Fly.io, Cloud Run, a VPS):
+**Vercel (recommended):** import the repo at [vercel.com/new](https://vercel.com/new). `vercel.json` already sets everything up: the React app is served as static files and `api/index.ts` runs as a serverless function. Add `GEMINI_API_KEY` under *Settings → Environment Variables* if you want AI analysis.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/amarsigireddi-source/Lemspector&env=GEMINI_API_KEY&envDescription=Optional%20Gemini%20key%20for%20AI%20analysis)
+
+**Any other Node host** (Render, Railway, Fly.io, Cloud Run, a VPS):
 
 ```bash
 npm ci && npm run build
@@ -103,7 +109,7 @@ Things to know before you share the link:
 ```
 ┌─────────────────────┐      ┌──────────────────────────┐      ┌──────────────────┐
 │  React 19 + Vite    │ ───▶ │  Express server          │ ───▶ │  Lemlist REST API │
-│  Tailwind v4 UI     │      │  (server.ts)             │      └──────────────────┘
+│  Tailwind v4 UI     │      │  (api/index.ts)          │      └──────────────────┘
 │  localStorage state │      │  • Lemlist proxy         │      ┌──────────────────┐
 └─────────────────────┘      │  • Gemini analysis       │ ───▶ │  Google Gemini    │
                              └──────────────────────────┘      └──────────────────┘
@@ -123,7 +129,9 @@ Things to know before you share the link:
 ### Project structure
 
 ```
-├── server.ts              # Express API: Lemlist proxy + Gemini endpoints
+├── api/index.ts           # Express API: Lemlist proxy + Gemini (Vercel function)
+├── server.ts              # Local/self-hosted entry: API + front end
+├── vercel.json            # Vercel build & routing config
 ├── src/
 │   ├── App.tsx            # App shell, state & data sync
 │   ├── components/        # Tabs, modals, sidebar, header
