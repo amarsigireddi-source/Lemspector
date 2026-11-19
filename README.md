@@ -109,7 +109,7 @@ Things to know before you share the link:
 ```
 ┌─────────────────────┐      ┌──────────────────────────┐      ┌──────────────────┐
 │  React 19 + Vite    │ ───▶ │  Express server          │ ───▶ │  Lemlist REST API │
-│  Tailwind v4 UI     │      │  (server.ts)             │      └──────────────────┘
+│  Tailwind v4 UI     │      │  (api/index.ts)          │      └──────────────────┘
 │  localStorage state │      │  • Lemlist proxy         │      ┌──────────────────┐
 └─────────────────────┘      │  • Gemini analysis       │ ───▶ │  Google Gemini    │
                              └──────────────────────────┘      └──────────────────┘
